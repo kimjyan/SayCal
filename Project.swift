@@ -24,7 +24,10 @@ let project = Project(
                 "UILaunchScreen": .dictionary([:]),
             ]),
             sources: ["SayCal/**/*.swift"],
-            resources: ["SayCal/**/*.xcassets"]
+            resources: ["SayCal/**/*.xcassets"],
+            dependencies: [
+                .external(name: "ComposableArchitecture"),
+            ]
         ),
         .target(
             name: "SayCalTests",
