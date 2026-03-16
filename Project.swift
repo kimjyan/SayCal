@@ -21,6 +21,7 @@ let project = Project(
             deploymentTargets: .iOS("26.0"),
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": .dictionary([:]),
+                "NSCalendarsFullAccessUsageDescription": "일정을 캘린더에 추가하기 위해 접근 권한이 필요합니다.",
             ]),
             sources: ["SayCal/**/*.swift"],
             resources: ["SayCal/**/*.xcassets"],

@@ -18,9 +18,11 @@ struct AddScheduleFeature {
         case textChanged(String)
         case addButtonTapped
         case parseResponse(Result<ParsedSchedule, Error>)
+        case calendarEventResponse(Result<Void, Error>)
     }
 
     @Dependency(\.parseScheduleUseCase) var parseScheduleUseCase: ParseScheduleUseCase
+    @Dependency(\.createCalendarEventUseCase) var createCalendarEventUseCase: CreateCalendarEventUseCase
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -38,7 +40,19 @@ struct AddScheduleFeature {
                     ))
                 }
 
-            case .parseResponse:
+            case let .parseResponse(.success(schedule)):
+                let title = state.text
+                return .run { send in
+                    await send(.calendarEventResponse(
+                        Result { try await createCalendarEventUseCase.execute(title, schedule) }
+                    ))
+                }
+
+            case .parseResponse(.failure):
+                state.isLoading = false
+                return .none
+
+            case .calendarEventResponse:
                 state.isLoading = false
                 return .none
             }
