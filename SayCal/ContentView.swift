@@ -83,18 +83,20 @@ struct ContentView: View {
 
     private var bottomSection: some View {
         VStack(spacing: 0) {
-            Button {} label: {
-                Image(systemName: "mic.fill")
+            Button {
+                store.send(.micButtonTapped)
+            } label: {
+                Image(systemName: store.isRecording ? "stop.fill" : "mic.fill")
                     .font(.system(size: 32))
-                    .foregroundStyle(Color(.systemGray2))
+                    .foregroundStyle(store.isRecording ? .red : Color(.systemGray2))
                     .frame(width: 72, height: 72)
-                    .background(Color(.systemGray5))
+                    .background(store.isRecording ? Color.red.opacity(0.12) : Color(.systemGray5))
                     .clipShape(Circle())
                     .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
             }
             .padding(.bottom, 12)
 
-            Text("탭하여 말하기")
+            Text(store.isRecording ? "탭하여 중지" : "탭하여 말하기")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Color(.systemGray))
 

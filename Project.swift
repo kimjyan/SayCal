@@ -22,6 +22,8 @@ let project = Project(
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": .dictionary([:]),
                 "NSCalendarsFullAccessUsageDescription": "일정을 캘린더에 추가하기 위해 접근 권한이 필요합니다.",
+                "NSSpeechRecognitionUsageDescription": "음성으로 일정을 입력하기 위해 음성 인식 권한이 필요합니다.",
+                "NSMicrophoneUsageDescription": "음성으로 일정을 입력하기 위해 마이크 권한이 필요합니다.",
             ]),
             sources: ["SayCal/**/*.swift"],
             resources: ["SayCal/**/*.xcassets"],
