@@ -5,10 +5,11 @@
 //  Created by 김재한 on 2/26/26.
 //
 
+import ComposableArchitecture
 import SwiftUI
 
 struct ContentView: View {
-    @State private var text = ""
+    @Bindable var store: StoreOf<AddScheduleFeature>
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,9 +37,12 @@ struct ContentView: View {
 
                 Spacer()
 
-                Text("추가")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(text.isEmpty ? Color(.systemGray3) : Color.accentColor)
+                Button {} label: {
+                    Text("추가")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(store.text.isEmpty ? Color(.systemGray3) : Color.accentColor)
+                }
+                .disabled(store.text.isEmpty)
             }
         }
         .padding(.horizontal, 16)
@@ -47,13 +51,13 @@ struct ContentView: View {
 
     private var inputArea: some View {
         ZStack(alignment: .topLeading) {
-            TextEditor(text: $text)
+            TextEditor(text: $store.text.sending(\.textChanged))
                 .font(.system(size: 22))
                 .lineSpacing(6)
                 .scrollContentBackground(.hidden)
                 .padding(12)
 
-            if text.isEmpty {
+            if store.text.isEmpty {
                 Text("이번주 토요일 3시 강남역")
                     .font(.system(size: 22))
                     .lineSpacing(6)
@@ -110,5 +114,7 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(store: Store(initialState: AddScheduleFeature.State()) {
+        AddScheduleFeature()
+    })
 }

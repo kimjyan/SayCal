@@ -9,7 +9,6 @@ let project = Project(
     settings: .settings(
         base: [
             "DEVELOPMENT_TEAM": "HCL3R5DRWV",
-            "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
             "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
         ]
     ),
