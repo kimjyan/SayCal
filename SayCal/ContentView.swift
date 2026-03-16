@@ -37,12 +37,19 @@ struct ContentView: View {
 
                 Spacer()
 
-                Button {} label: {
-                    Text("추가")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(store.text.isEmpty ? Color(.systemGray3) : Color.accentColor)
+                if store.isLoading {
+                    ProgressView()
+                        .frame(width: 44, height: 44)
+                } else {
+                    Button {
+                        store.send(.addButtonTapped)
+                    } label: {
+                        Text("추가")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(store.text.isEmpty ? Color(.systemGray3) : Color.accentColor)
+                    }
+                    .disabled(store.text.isEmpty)
                 }
-                .disabled(store.text.isEmpty)
             }
         }
         .padding(.horizontal, 16)
