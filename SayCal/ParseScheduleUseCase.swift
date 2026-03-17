@@ -9,10 +9,7 @@ struct ParseScheduleUseCase: Sendable {
 extension ParseScheduleUseCase: DependencyKey {
     static var liveValue: Self {
         .init { text in
-            let today = Date.now.formatted(.dateTime.year().month().day().weekday(.wide))
-            let session = LanguageModelSession(
-                instructions: "오늘은 \(today)입니다. 사용자가 입력한 일정 텍스트에서 날짜와 시간을 추출하세요."
-            )
+            let session = LanguageModelSession(instructions: makeInstructions())
             let response = try await session.respond(to: text, generating: ScheduleGenerableOutput.self)
             return ParsedSchedule(date: response.content.date, time: response.content.time)
         }
@@ -28,11 +25,54 @@ extension DependencyValues {
 
 // MARK: - Private
 
+private func makeInstructions() -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.locale = Locale(identifier: "ko-KR")
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+
+    let weekdayFormatter = DateFormatter()
+    weekdayFormatter.locale = Locale(identifier: "ko-KR")
+    weekdayFormatter.dateFormat = "EEEE"
+
+    let today = Date.now
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.locale = Locale(identifier: "ko-KR")
+    calendar.firstWeekday = 2
+
+    let weekday = calendar.component(.weekday, from: today)
+    let daysFromMonday = (weekday + 5) % 7
+
+    func weekEntry(offset: Int) -> String {
+        let date = calendar.date(byAdding: .day, value: offset, to: today)!
+        return "- \(weekdayFormatter.string(from: date)): \(dateFormatter.string(from: date))"
+    }
+
+    let todayStr = dateFormatter.string(from: today)
+    let tomorrowStr = dateFormatter.string(from: calendar.date(byAdding: .day, value: 1, to: today)!)
+
+    var thisWeek = (0...6).map { weekEntry(offset: $0 - daysFromMonday) }.joined(separator: "\n")
+    var nextWeek = (7...13).map { weekEntry(offset: $0 - daysFromMonday) }.joined(separator: "\n")
+
+    return """
+    사용자가 입력한 일정 텍스트에서 날짜와 시간을 추출하세요.
+    - 오전/오후를 24시간 형식으로 변환하세요. (오전 9시 → 09:00, 오후 9시 → 21:00)
+
+    오늘: \(todayStr)
+    내일: \(tomorrowStr)
+
+    이번주:
+    \(thisWeek)
+
+    다음주:
+    \(nextWeek)
+    """
+}
+
 @Generable
 private struct ScheduleGenerableOutput {
-    @Guide(description: "일정의 날짜 (yyyy-MM-dd 형식, 예: 2026-03-21). 날짜 정보가 없으면 빈 문자열.")
+    @Guide(description: "일정의 날짜. 이번주/다음주/내일 등 상대적 표현을 오늘 기준 절대 날짜로 계산하여 yyyy-MM-dd 형식으로 반환. 예: 2026-03-20. 날짜 정보가 없으면 빈 문자열.")
     var date: String
 
-    @Guide(description: "일정의 시간 (HH:mm 24시간 형식, 예: 15:00). 시간 정보가 없으면 빈 문자열.")
+    @Guide(description: "일정의 시간. 오전/오후를 24시간 형식으로 변환하여 HH:mm으로 반환. 오전 9시 → 09:00, 오후 9시 → 21:00, 오후 1시 → 13:00. 시간 정보가 없으면 빈 문자열.")
     var time: String
 }
