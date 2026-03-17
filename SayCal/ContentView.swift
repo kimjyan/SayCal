@@ -17,6 +17,7 @@ struct ContentView: View {
             inputArea
                 .padding(.horizontal, 16)
                 .padding(.top, 24)
+                .padding(.bottom, 36)
             bottomSection
         }
         .background(Color(.systemBackground))
@@ -102,12 +103,6 @@ struct ContentView: View {
             Text(store.isRecording ? "탭하여 중지" : "탭하여 말하기")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Color(.systemGray))
-
-            Capsule()
-                .fill(Color(.systemGray4))
-                .frame(width: 128, height: 6)
-                .padding(.top, 16)
-                .padding(.bottom, 8)
         }
         .padding(.top, 16)
         .padding(.bottom, 16)
