@@ -64,6 +64,8 @@ struct ContentView: View {
                 .lineSpacing(6)
                 .scrollContentBackground(.hidden)
                 .padding(12)
+                .disabled(store.isLoading)
+                .opacity(store.isLoading ? 0.5 : 1)
 
             if store.text.isEmpty {
                 Text("이번주 토요일 3시 강남역")
