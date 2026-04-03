@@ -2,8 +2,10 @@ import ComposableArchitecture
 import Foundation
 
 struct ParsedSchedule: Equatable {
+    var title: String
     var date: String
     var time: String
+    var location: String
 }
 
 @Reducer
@@ -48,10 +50,9 @@ struct AddScheduleFeature {
                 }
 
             case let .parseResponse(.success(schedule)):
-                let title = state.text
                 return .run { send in
                     await send(.calendarEventResponse(
-                        Result { try await createCalendarEventUseCase.execute(title, schedule) }
+                        Result { try await createCalendarEventUseCase.execute(schedule) }
                     ))
                 }
 

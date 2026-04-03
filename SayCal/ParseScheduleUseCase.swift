@@ -11,7 +11,8 @@ extension ParseScheduleUseCase: DependencyKey {
         .init { text in
             let session = LanguageModelSession(instructions: makeInstructions())
             let response = try await session.respond(to: text, generating: ScheduleGenerableOutput.self)
-            return ParsedSchedule(date: response.content.date, time: response.content.time)
+            let content = response.content
+            return ParsedSchedule(title: content.title, date: content.date, time: content.time, location: content.location)
         }
     }
 }
@@ -70,9 +71,15 @@ private func makeInstructions() -> String {
 
 @Generable
 private struct ScheduleGenerableOutput {
+    @Guide(description: "일정의 제목. 날짜/시간/장소를 제외한 핵심 내용. 예: '이번주 금요일 오후 9시 병문안 강남역' → '병문안'. 없으면 빈 문자열.")
+    var title: String
+
     @Guide(description: "일정의 날짜. 이번주/다음주/내일 등 상대적 표현을 오늘 기준 절대 날짜로 계산하여 yyyy-MM-dd 형식으로 반환. 예: 2026-03-20. 날짜 정보가 없으면 빈 문자열.")
     var date: String
 
     @Guide(description: "일정의 시간. 오전/오후를 24시간 형식으로 변환하여 HH:mm으로 반환. 오전 9시 → 09:00, 오후 9시 → 21:00, 오후 1시 → 13:00. 시간 정보가 없으면 빈 문자열.")
     var time: String
+
+    @Guide(description: "일정의 장소. 예: '강남역', '회사', '집'. 장소 정보가 없으면 빈 문자열.")
+    var location: String
 }

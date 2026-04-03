@@ -3,19 +3,20 @@ import EventKit
 import Foundation
 
 struct CreateCalendarEventUseCase: Sendable {
-    var execute: @Sendable (_ title: String, _ schedule: ParsedSchedule) async throws -> Void
+    var execute: @Sendable (_ schedule: ParsedSchedule) async throws -> Void
 }
 
 extension CreateCalendarEventUseCase: DependencyKey {
     static var liveValue: Self {
-        .init { title, schedule in
+        .init { schedule in
             let store = EKEventStore()
 
             let granted = try await store.requestFullAccessToEvents()
             guard granted else { throw CalendarError.accessDenied }
 
             let event = EKEvent(eventStore: store)
-            event.title = title
+            event.title = schedule.title.isEmpty ? "일정" : schedule.title
+            event.location = schedule.location.isEmpty ? nil : schedule.location
             event.calendar = store.defaultCalendarForNewEvents
 
             let (startDate, isAllDay) = parseDate(schedule)
