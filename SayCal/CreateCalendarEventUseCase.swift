@@ -17,7 +17,9 @@ extension CreateCalendarEventUseCase: DependencyKey {
             let event = EKEvent(eventStore: store)
             event.title = schedule.title.isEmpty ? "일정" : schedule.title
             event.location = schedule.location.isEmpty ? nil : schedule.location
-            event.calendar = store.defaultCalendarForNewEvents
+            let savedID = UserDefaults.standard.string(forKey: selectedCalendarKey) ?? ""
+            event.calendar = store.calendars(for: .event).first { $0.calendarIdentifier == savedID }
+                ?? store.defaultCalendarForNewEvents
 
             let (startDate, isAllDay) = parseDate(schedule)
             event.startDate = startDate

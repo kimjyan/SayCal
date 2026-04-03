@@ -15,6 +15,7 @@ struct AddScheduleFeature {
         var text = ""
         var isLoading = false
         var isRecording = false
+        var isSettingsPresented = false
     }
 
     enum Action {
@@ -25,6 +26,8 @@ struct AddScheduleFeature {
         case recordingFinished
         case parseResponse(Result<ParsedSchedule, Error>)
         case calendarEventResponse(Result<Void, Error>)
+        case settingsButtonTapped
+        case settingsDismissed
     }
 
     private enum CancelID { case recording }
@@ -87,6 +90,14 @@ struct AddScheduleFeature {
 
             case .recordingFinished:
                 state.isRecording = false
+                return .none
+
+            case .settingsButtonTapped:
+                state.isSettingsPresented = true
+                return .none
+
+            case .settingsDismissed:
+                state.isSettingsPresented = false
                 return .none
             }
         }

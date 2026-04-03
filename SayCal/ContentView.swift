@@ -21,6 +21,14 @@ struct ContentView: View {
             bottomSection
         }
         .background(Color(.systemBackground))
+        .sheet(isPresented: Binding(
+            get: { store.isSettingsPresented },
+            set: { _ in store.send(.settingsDismissed) }
+        )) {
+            CalendarSettingsView(store: Store(initialState: CalendarSettingsFeature.State()) {
+                CalendarSettingsFeature()
+            })
+        }
     }
 
     private var navBar: some View {
@@ -29,8 +37,10 @@ struct ContentView: View {
                 .font(.system(size: 17, weight: .semibold))
 
             HStack {
-                Button {} label: {
-                    Image(systemName: "gearshape")
+                Button {
+                    store.send(.settingsButtonTapped)
+                } label: {
+                    Image(systemName: "calendar")
                         .font(.system(size: 22))
                         .foregroundStyle(Color.accentColor)
                         .frame(width: 40, height: 40)
