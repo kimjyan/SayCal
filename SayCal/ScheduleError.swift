@@ -6,6 +6,7 @@ enum ScheduleError: Error, Equatable {
     case calendarPermission    // F3 — 캘린더 권한 거부
     case calendarSaveFailure   // F4 — 캘린더 저장 실패
     case speechFailure         // F5 — 음성 인식 실패
+    case multipleSchedules     // F6 — 한 입력에 여러 일정
 
     var title: String {
         switch self {
@@ -14,6 +15,7 @@ enum ScheduleError: Error, Equatable {
         case .calendarPermission:  "캘린더 권한이 필요해요"
         case .calendarSaveFailure: "캘린더에 저장하지 못했어요"
         case .speechFailure:       "음성 인식을 사용할 수 없어요"
+        case .multipleSchedules:   "여러 일정이 감지됐어요"
         }
     }
 
@@ -24,6 +26,7 @@ enum ScheduleError: Error, Equatable {
         case .calendarPermission:  "설정 앱에서 캘린더 접근을 허용해 주세요."
         case .calendarSaveFailure: "선택한 캘린더에 저장할 수 없어요. 다른 캘린더를 선택해 주세요."
         case .speechFailure:       "텍스트로 입력해 주세요."
+        case .multipleSchedules:   "한 번에 하나의 일정만 추가할 수 있어요. 일정을 나눠서 입력해 주세요."
         }
     }
 

@@ -109,6 +109,10 @@ struct AddScheduleFeature {
                 return .none
 
             case .addButtonTapped:
+                if RegexScheduleParser.detectsMultipleSchedules(state.text) {
+                    state.errorAlert = .init(error: .multipleSchedules)
+                    return .none
+                }
                 state.phase = .parsing
                 let text = state.text
                 return .run { send in

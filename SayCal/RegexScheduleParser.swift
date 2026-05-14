@@ -5,6 +5,15 @@ enum RegexScheduleParser {
         (extractDate(text, now: now), extractTime(text), extractDurationMinutes(text), extractRecurrence(text))
     }
 
+    static func detectsMultipleSchedules(_ text: String) -> Bool {
+        let separators = [",", "그리고", " 또 "]
+        guard separators.contains(where: { text.contains($0) }) else { return false }
+        let pattern = #"\d{1,2}\s*시"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.numberOfMatches(in: text, range: range) >= 2
+    }
+
     static func extractRecurrence(_ text: String) -> Recurrence {
         if text.contains("매일") || text.contains("매 일") {
             return .daily
