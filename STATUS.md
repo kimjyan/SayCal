@@ -1,22 +1,27 @@
 # SayCal — 프로젝트 현황 (STATUS)
 
-> 최종 업데이트: 2026-05-14 (v3 — Sprint 1 Trust Foundation 완료)
+> 최종 업데이트: 2026-05-14 (v4 — Sprint 2 일정 풍부화 완료)
 > 작성자: PM (자동 생성, 코드/커밋/Attack-doc 기반)
-> 브랜치: `main` · 최신 커밋: `e95f3ae Add tests for onboarding step transitions and permission requests`
+> 브랜치: `main` · 최신 커밋: `2606b3e Add tests for multi-schedule detection and rejection`
 > 동봉 문서: `ATTACK.md` (출시 전 공격 리뷰)
 
 ---
 
-## 0. v3 변경 요약 — Sprint 1 클로즈
+## 0. v4 변경 요약 — Sprint 2 클로즈
 
-**Sprint 1 Trust Foundation 7개 P0 항목 전부 처리.** 저장 전 신뢰·실패 분기·권한 복구·캘린더 검증·AI fallback·온보딩·테스트 베이스라인이 들어왔다.
+**Sprint 2 일정 풍부화 7개 P1 항목 전부 처리.** duration·알람·반복·다중 일정·캘린더 진입·음성 단계까지 자연어로 표현된 모든 일반 속성이 추출·편집·저장 가능해졌다.
 
-- 출시 차단 7개 게이트 (§10) 전부 ✅
-- 테스트 48건 통과 (§13.2)
-- 새 파일 8개, 수정 4개
-- 신뢰 모델 5단계 (§11) 중 1·3·4·5 단계 구현. 2단계(음성 UX 상태 표시)는 P1-7로 남음.
+- P1-1 자동 duration 파싱: `@Generable durationMinutes` + 정규식 (예: "1시간 30분 회의" → 90분)
+- P1-2 반복 일정: `Recurrence` enum (daily/weekly/monthly/yearly) + `EKRecurrenceRule` (end nil)
+- P1-3 알람: `alarmOffsetMinutes` + `EKAlarm` relative offset
+- P1-5 다중 일정: 쉼표/"그리고" + 2개 이상 시각 감지 → F6 카테고리로 사전 거부
+- P1-6 캘린더 진입: 저장 알림에 "캘린더에서 열기" 버튼 (`calshow:` 딥링크)
+- P1-7 음성 UX 단계: idle/recording/parsing/saving phase enum + 단계 캡션
+- 신뢰 모델 (§11) 5단계 모두 ✅ (P1-7로 2단계 마무리)
+- 새 카테고리 F6 추가, 실패면 매트릭스 6종으로 확장
+- 테스트 73건 통과 (Sprint 1 종료 시 48건 → 25건 추가)
 
-이전 변경(v2)에서 정의한 실패면 매트릭스(F1–F5)는 그대로 유효하며, 모든 실패가 사용자에게 카테고리별로 노출되도록 구현.
+이전 변경(v3)의 Trust Foundation은 그대로 유지.
 
 ---
 
@@ -47,7 +52,7 @@
 | 학생 | 강의 중 빠르게 "내일 오후 9시 스터디" |
 | 부모 | 운전 중 음성으로 "이번주 금요일 7시 학부모 모임" |
 
-**Golden Path (v3)**: 첫 실행 시 온보딩 3-step (가치 → 권한 → 예시) → 메인 진입 → 한 문장 발화/입력 → **AI 또는 정규식 파싱** → **확인/수정 시트** → 저장 → **저장 결과 요약 알림**.
+**Golden Path (v4)**: 첫 실행 시 온보딩 3-step → 메인 진입 → 한 문장 발화/입력 → **AI 또는 정규식 파싱**(제목/날짜/시간/장소/길이/알림/반복 7필드) → **확인/수정 시트** → 저장 → **결과 알림** + "캘린더에서 열기" 버튼.
 
 ---
 
@@ -130,26 +135,20 @@ CalendarSettingsView (sheet)
 ## 7. 데이터 모델
 
 ```swift
-struct ParsedSchedule {           // 현재 사용
+struct ParsedSchedule {
     var title: String
     var date: String              // "yyyy-MM-dd"
     var time: String              // "HH:mm" (빈 문자열이면 종일)
     var location: String
+    var durationMinutes: Int = 0          // 0 = 미지정, UI에서 60분 기본 적용
+    var alarmOffsetMinutes: Int = -1      // -1 = 알람 없음, 0 = 정시, N = N분 전
+    var recurrence: Recurrence = .none
 }
 
-// Sprint 2 예정 확장
-struct ParsedSchedule {
-    var title: String
-    var date: String
-    var time: String
-    var location: String
-    var durationMinutes: Int?     // ATTACK §4 — 현재 확인 시트에서 선택, 모델에는 미반영
-    var recurrence: Recurrence?   // ATTACK §5
-    var alarmOffsetMinutes: Int?  // ATTACK §6
-}
+enum Recurrence: String { case none, daily, weekly, monthly, yearly }
 ```
 
-> `durationMinutes`는 v3 시점 사용자 확인 시트에서 30/60/90/120/180분 중 선택해 `CreateCalendarEventUseCase`로 전달 (모델 파싱 단계엔 미반영).
+> 모델은 `@Generable`로 위 7개 필드를 한 번에 추출. 정규식 fallback은 date/time/duration/recurrence 4개를 보완.
 
 ---
 
@@ -167,7 +166,7 @@ struct ParsedSchedule {
 
 ## 9. 갭 / 리스크
 
-### 9.1 실패면 매트릭스 (구현 완료)
+### 9.1 실패면 매트릭스 (구현 완료, v4에서 F6 추가)
 
 | 카테고리 | 트리거 | 사용자 메시지 | 다음 행동 | 구현 |
 |---|---|---|---|---|
@@ -176,6 +175,7 @@ struct ParsedSchedule {
 | F3. 캘린더 권한 | `requestFullAccessToEvents` 거부 | "캘린더 권한이 필요해요" | "설정 열기" 버튼 | ✅ |
 | F4. 캘린더 저장 | stale ID / 쓰기 불가 / 저장 예외 | "캘린더에 저장하지 못했어요" | "캘린더 변경" 버튼 (설정 시트) | ✅ |
 | F5. 음성 인식 | 권한 거부 / 미가용 | "음성 인식을 사용할 수 없어요" | "설정 열기" 버튼 | ✅ |
+| F6. 다중 일정 | 쉼표/"그리고" + 시각 ≥2 사전 감지 | "여러 일정이 감지됐어요" | "확인" (사용자가 분리 입력) | ✅ |
 
 ### 9.2 P0 — 출시 차단급 (전부 해소)
 
@@ -189,17 +189,17 @@ struct ParsedSchedule {
 | P0-6 | FoundationModels 실패 fallback | ✅ `RegexScheduleParser` |
 | P0-7 | 핵심 Reducer/UseCase 테스트 | ✅ 48건 |
 
-### 9.3 P1 — 핵심 사용성 (Sprint 2 후보)
+### 9.3 P1 — 핵심 사용성 (Sprint 2 클로즈)
 
 | ID | 항목 | 근거 | 상태 |
 |---|---|---|---|
-| P1-1 | duration 파싱 자동화 (현재는 확인 시트에서 수동 선택) | ATTACK §4 | 🟡 부분 (확인 시트만) |
-| P1-2 | 반복 일정 미지원 | ATTACK §5 | ⏳ |
-| P1-3 | 알람/리마인더 미지원 | ATTACK §6 | ⏳ |
-| P1-4 | 온보딩 화면 부재 | ATTACK §7 | ✅ (P0-3에 흡수) |
-| P1-5 | 다중 일정 입력 정책 미정 | ATTACK §9 | ⏳ |
-| P1-6 | 저장 후 결과 요약 | ATTACK §11 | 🟡 알림 카드만, 캘린더 진입 버튼 없음 |
-| P1-7 | 음성 UX 상태 미구분 | ATTACK §12 | ⏳ |
+| P1-1 | duration 자동 파싱 | ATTACK §4 | ✅ `@Generable durationMinutes` + 정규식 |
+| P1-2 | 반복 일정 | ATTACK §5 | ✅ `Recurrence` enum + `EKRecurrenceRule` |
+| P1-3 | 알람/리마인더 | ATTACK §6 | ✅ `alarmOffsetMinutes` + `EKAlarm` |
+| P1-4 | 온보딩 화면 | ATTACK §7 | ✅ (Sprint 1에서 처리) |
+| P1-5 | 다중 일정 정책 | ATTACK §9 | ✅ 사전 감지 후 F6으로 거부 |
+| P1-6 | 저장 후 캘린더 진입 | ATTACK §11 | ✅ "캘린더에서 열기" (`calshow:` 딥링크) |
+| P1-7 | 음성 UX 단계 분리 | ATTACK §12 | ✅ `Phase` enum + 단계 캡션 |
 
 ### 9.4 P2 — 확장
 
@@ -231,14 +231,14 @@ struct ParsedSchedule {
 ## 11. 신뢰 모델 (Trust Model)
 
 ```
-1. 권한 요청  →  사용자가 왜 필요한지 안다           ✅ 온보딩 §2
-2. 입력      →  사용자가 무엇이 인식됐는지 본다       ⏳ 음성 UX 미구분 (P1-7)
-3. 검토      →  사용자가 저장 전 결과를 확인/수정한다  ✅ ConfirmScheduleView
-4. 저장      →  사용자가 어디에 저장됐는지 본다       ✅ 저장 완료 알림
-5. 복구      →  실패해도 다음 행동이 명확하다        ✅ 5종 카테고리별 액션
+1. 권한 요청  →  사용자가 왜 필요한지 안다           ✅ 온보딩 3-step
+2. 입력      →  사용자가 무엇이 인식됐는지 본다       ✅ Phase 캡션 (듣고/분석/저장)
+3. 검토      →  사용자가 저장 전 결과를 확인/수정한다  ✅ ConfirmScheduleView (7필드 편집)
+4. 저장      →  사용자가 어디에 저장됐는지 본다       ✅ 저장 알림 + 캘린더 딥링크
+5. 복구      →  실패해도 다음 행동이 명확하다        ✅ 6종 카테고리별 액션
 ```
 
-5단계 중 4단계 구현. 남은 한 단계(2단계 음성 UX)는 P1-7로 추적.
+5단계 모두 구현 완료.
 
 ---
 
@@ -247,18 +247,14 @@ struct ParsedSchedule {
 ### Sprint 1 — Trust Foundation ✅ 완료
 - P0-1 ~ P0-7 전부 해제. 출시 차단 게이트 클리어.
 
-### Sprint 2 — 일정 풍부화 (다음 후보)
-- P1-1 duration 자동 파싱: `ParsedSchedule.durationMinutes` + `@Guide` 추가
-- P1-2 반복: `Recurrence` 모델 + `EKRecurrenceRule`
-- P1-3 알람: `alarmOffsetMinutes` + `EKAlarm`
-- P1-5 다중 일정: 정책 결정 후 `[ParsedSchedule]` 구조 또는 사전 거부
-- P1-6 저장 후 캘린더 진입: 알림에 "캘린더에서 열기" 버튼
-- P1-7 음성 UX: idle / recording / transcribing / parsing 4-state 분리
+### Sprint 2 — 일정 풍부화 ✅ 완료
+- P1-1 ~ P1-7 전부 해제. 자연어 1문장이 7필드(제목/날짜/시간/장소/길이/알림/반복)로 추출되고, 사용자는 확인 시트에서 모두 편집한다.
 
-### Sprint 3 — 진입점 다양화
+### Sprint 3 — 진입점 다양화 (다음 후보)
 - P2-1 App Intents / Siri / 단축어 / 위젯
 - P2-2 다국어 분리 (`Localizable.strings`)
-- P2-3 / P2-4 EmptyState · 일정 목록 화면
+- P2-3 캘린더 0개 사용자 EmptyState
+- P2-4 일정 목록 / 재편집 / 삭제 진입점
 
 ---
 
@@ -268,13 +264,13 @@ struct ParsedSchedule {
 
 | 대상 | 종류 | 테스트 수 | 검증 항목 |
 |---|---|---|---|
-| `RegexScheduleParser` | 단위 | 23 | 오늘/내일/모레/글피, 이번주/다음주/단독 요일, N월 N일, 오전/오후, 자정/정오, 24h, 종합 |
-| `AddScheduleFeature` | TCA `TestStore` | 7 | 파싱 성공/실패, 빈 date, 확인 시트 저장, F3/F4 라우팅, 확인 취소 |
+| `RegexScheduleParser` | 단위 | 35 | 날짜 12 + 시간 9 + duration 7 + 반복 5 + 다중 감지 4 + 종합 |
+| `AddScheduleFeature` | TCA `TestStore` | 10 | 파싱 성공/실패, 빈 date, F3/F4/F6 라우팅, 확인 시트 저장/취소, phase 동작 |
 | `OnboardingFeature` | TCA `TestStore` | 9 | step 전이, 권한 일괄 요청, 건너뛰기, 뒤로 |
 | `ScheduleError` mapping | 단위 | 6 | CalendarError/SpeechError 매핑 + 미지 에러 fallback |
-| `ConfirmScheduleFeature.State` | 단위 | 3 | resolved 라운드트립, 종일/시간 분기, 빈 입력 |
+| `ConfirmScheduleFeature.State` | 단위 | 8 | resolved 라운드트립, 종일/시간 분기, duration/alarm/recurrence 전파 |
 
-**총 48 테스트 / 5 suite / 모두 통과 (xcodebuild test 5초 이하).**
+**총 73 테스트 / 5 suite / 모두 통과 (xcodebuild test 5초 이하).**
 
 ### 13.2 커버 안 된 영역 (Sprint 2/3 후보)
 - `CreateCalendarEventUseCase` — 모킹 가능하나 mock 미작성 (EventKit 의존성 격리 필요)
@@ -325,10 +321,10 @@ OnboardingFeatureTests.swift     ← v3 신규 — 온보딩 9건
 
 ---
 
-## 16. 최종 판정 (v3)
+## 16. 최종 판정 (v4)
 
-**Sprint 1 종료 시점에서 SayCal은 출시 차단 7개 게이트를 모두 통과한 상태.** ATTACK 리뷰가 지적한 신뢰 인프라 4종(저장 전 신뢰 · 실패 설명 · 권한 복구 · 캘린더 저장 검증)이 모두 들어와 있고, 추가로 FoundationModels fallback과 첫 실행 온보딩이 보강됐다.
+**Sprint 2 종료 시점에서 SayCal은 ATTACK 리뷰가 지적한 15개 이슈 중 P0/P1 14개를 모두 해결한 상태.** 남은 4개(P2)는 진입점·다국어·EmptyState·일정 목록으로 모두 확장 영역이지 출시 차단이 아니다.
 
-남은 작업은 **출시 차단이 아닌 사용성/확장**: 자동 duration·반복·알람·다중 일정 처리(Sprint 2), App Intents·다국어·일정 목록(Sprint 3). 이들은 없어도 출시 가능하지만, 있으면 자연어 일정 앱이라는 포지셔닝을 강화한다.
+자연어 한 문장 → 7필드 파싱 → 사용자 검토 → 캘린더 저장 → 캘린더 진입까지 끊김 없이 구현. 6종 실패 카테고리는 각자 다른 메시지와 복구 액션을 제공한다.
 
-베타 배포(친구·동료 대상) 시작에 적절한 시점.
+**스토어 제출 또는 베타 공개 모집에 적절한 시점.** Sprint 3는 진입점 확장(Siri/위젯/단축어)으로 자연어 일정 앱의 포지셔닝을 강화하는 단계가 된다.
