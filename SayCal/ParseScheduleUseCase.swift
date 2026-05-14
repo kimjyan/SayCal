@@ -9,10 +9,30 @@ struct ParseScheduleUseCase: Sendable {
 extension ParseScheduleUseCase: DependencyKey {
     static var liveValue: Self {
         .init { text in
-            let session = LanguageModelSession(instructions: makeInstructions())
-            let response = try await session.respond(to: text, generating: ScheduleGenerableOutput.self)
-            let content = response.content
-            return ParsedSchedule(title: content.title, date: content.date, time: content.time, location: content.location)
+            let fallback = RegexScheduleParser.parse(text)
+
+            do {
+                let session = LanguageModelSession(instructions: makeInstructions())
+                let response = try await session.respond(to: text, generating: ScheduleGenerableOutput.self)
+                let content = response.content
+
+                return ParsedSchedule(
+                    title: content.title,
+                    date: content.date.isEmpty ? fallback.date : content.date,
+                    time: content.time.isEmpty ? fallback.time : content.time,
+                    location: content.location
+                )
+            } catch {
+                guard !fallback.date.isEmpty else {
+                    throw ScheduleError.modelUnavailable
+                }
+                return ParsedSchedule(
+                    title: "",
+                    date: fallback.date,
+                    time: fallback.time,
+                    location: ""
+                )
+            }
         }
     }
 }
