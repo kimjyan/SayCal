@@ -164,6 +164,25 @@ struct AddScheduleFeatureTests {
         }
     }
 
+    // MARK: - F6 다중 일정 감지
+
+    @Test func multipleSchedulesShowsAlertWithoutCallingParser() async {
+        let store = TestStore(
+            initialState: AddScheduleFeature.State(text: "9시 회의, 11시 점심")
+        ) {
+            AddScheduleFeature()
+        } withDependencies: {
+            $0.parseScheduleUseCase.execute = { _ in
+                Issue.record("multi-schedule input must not reach parser")
+                throw ScheduleError.parseFailure
+            }
+        }
+
+        await store.send(.addButtonTapped) {
+            $0.errorAlert = .init(error: .multipleSchedules)
+        }
+    }
+
     // MARK: - 단계별 statusMessage
 
     @Test func statusMessageByPhase() {

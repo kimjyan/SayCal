@@ -194,4 +194,23 @@ struct RegexScheduleParserTests {
     @Test func recurrenceNoneForOneOff() {
         #expect(RegexScheduleParser.extractRecurrence("내일 3시 회의") == .none)
     }
+
+    // MARK: - 다중 일정 감지
+
+    @Test func detectsCommaSeparatedSchedules() {
+        #expect(RegexScheduleParser.detectsMultipleSchedules("9시 회의, 11시 점심") == true)
+    }
+
+    @Test func detectsGeurigoSeparator() {
+        #expect(RegexScheduleParser.detectsMultipleSchedules("9시 회의 그리고 2시 발표") == true)
+    }
+
+    @Test func singleTimeMarkerNotMulti() {
+        #expect(RegexScheduleParser.detectsMultipleSchedules("내일 3시 회의") == false)
+    }
+
+    @Test func durationRangeNotMulti() {
+        // "3시부터 5시까지"는 길이 표현이지 여러 일정이 아님 (쉼표 없음)
+        #expect(RegexScheduleParser.detectsMultipleSchedules("내일 3시부터 5시까지 워크숍") == false)
+    }
 }
