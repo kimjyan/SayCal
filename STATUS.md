@@ -1,27 +1,23 @@
 # SayCal — 프로젝트 현황 (STATUS)
 
-> 최종 업데이트: 2026-05-14 (v4 — Sprint 2 일정 풍부화 완료)
+> 최종 업데이트: 2026-05-14 (v5 — Sprint 3 진입점 확장 완료)
 > 작성자: PM (자동 생성, 코드/커밋/Attack-doc 기반)
-> 브랜치: `main` · 최신 커밋: `2606b3e Add tests for multi-schedule detection and rejection`
+> 브랜치: `main` · 최신 커밋: `95f2bb2 Add tests for recent events loading, deletion, and error states`
 > 동봉 문서: `ATTACK.md` (출시 전 공격 리뷰)
 
 ---
 
-## 0. v4 변경 요약 — Sprint 2 클로즈
+## 0. v5 변경 요약 — Sprint 3 클로즈 (P2-2 디퍼)
 
-**Sprint 2 일정 풍부화 7개 P1 항목 전부 처리.** duration·알람·반복·다중 일정·캘린더 진입·음성 단계까지 자연어로 표현된 모든 일반 속성이 추출·편집·저장 가능해졌다.
+**Sprint 3 진입점 확장 3개 (P2-1/3/4) 처리.** Siri·Spotlight 진입, 캘린더 0개 EmptyState, 일정 목록/삭제까지 들어왔다. P2-2(다국어)는 한국어 단일 시장 결정으로 명시적 디퍼.
 
-- P1-1 자동 duration 파싱: `@Generable durationMinutes` + 정규식 (예: "1시간 30분 회의" → 90분)
-- P1-2 반복 일정: `Recurrence` enum (daily/weekly/monthly/yearly) + `EKRecurrenceRule` (end nil)
-- P1-3 알람: `alarmOffsetMinutes` + `EKAlarm` relative offset
-- P1-5 다중 일정: 쉼표/"그리고" + 2개 이상 시각 감지 → F6 카테고리로 사전 거부
-- P1-6 캘린더 진입: 저장 알림에 "캘린더에서 열기" 버튼 (`calshow:` 딥링크)
-- P1-7 음성 UX 단계: idle/recording/parsing/saving phase enum + 단계 캡션
-- 신뢰 모델 (§11) 5단계 모두 ✅ (P1-7로 2단계 마무리)
-- 새 카테고리 F6 추가, 실패면 매트릭스 6종으로 확장
-- 테스트 73건 통과 (Sprint 1 종료 시 48건 → 25건 추가)
+- **P2-1 App Intents**: `AddScheduleIntent` + `SayCalShortcutsProvider` — "Hey Siri, SayCal에 일정 추가 내일 3시 회의"로 앱 외부에서 등록 가능. 추출/생성 UseCase 재사용, 한국어 dialog 응답.
+- **P2-3 EmptyState**: 캘린더 설정에서 쓰기 가능 캘린더 0개일 때 가이드 UI + "캘린더 앱 열기" 버튼.
+- **P2-4 일정 목록**: `RecentEventsFeature/View` — 선택 캘린더의 -7일~+30일 이벤트를 일별로 그룹화, swipe로 삭제/캘린더 열기. `FetchUpcomingEventsUseCase` + `DeleteEventUseCase` 신설.
+- **P2-2 다국어 분리**: ⏳ 한국어 단일 시장으로 결정, App Store 출시 시점에 한 줄 카피만 영어 번역 (코드 변경 불필요).
+- 테스트 78건 (Sprint 2 종료 시 73건 → 5건 추가, RecentEventsFeatureTests)
 
-이전 변경(v3)의 Trust Foundation은 그대로 유지.
+이전 변경(v4)의 Sprint 1/2 결과는 그대로 유지.
 
 ---
 
@@ -52,7 +48,12 @@
 | 학생 | 강의 중 빠르게 "내일 오후 9시 스터디" |
 | 부모 | 운전 중 음성으로 "이번주 금요일 7시 학부모 모임" |
 
-**Golden Path (v4)**: 첫 실행 시 온보딩 3-step → 메인 진입 → 한 문장 발화/입력 → **AI 또는 정규식 파싱**(제목/날짜/시간/장소/길이/알림/반복 7필드) → **확인/수정 시트** → 저장 → **결과 알림** + "캘린더에서 열기" 버튼.
+**Golden Path (v5)**: 첫 실행 시 온보딩 3-step → 메인 진입 → 한 문장 발화/입력 → **AI 또는 정규식 파싱**(제목/날짜/시간/장소/길이/알림/반복 7필드) → **확인/수정 시트** → 저장 → **결과 알림** + "캘린더에서 열기" 버튼.
+
+**Alternate entry paths (v5)**:
+- Siri/Spotlight: "Hey Siri, SayCal에 일정 추가 내일 3시 회의" → 확인 시트 없이 즉시 저장 + 한국어 dialog 응답
+- 단축어 앱: `AddScheduleIntent` 매크로로 모든 자동화 흐름에서 호출 가능
+- 일정 목록: nav bar 목록 버튼 → 최근 일정 확인/삭제/캘린더 진입
 
 ---
 
@@ -201,14 +202,14 @@ enum Recurrence: String { case none, daily, weekly, monthly, yearly }
 | P1-6 | 저장 후 캘린더 진입 | ATTACK §11 | ✅ "캘린더에서 열기" (`calshow:` 딥링크) |
 | P1-7 | 음성 UX 단계 분리 | ATTACK §12 | ✅ `Phase` enum + 단계 캡션 |
 
-### 9.4 P2 — 확장
+### 9.4 P2 — 확장 (Sprint 3 클로즈)
 
 | ID | 항목 | 상태 |
 |---|---|---|
-| P2-1 | App Intents · Siri · 단축어 · 위젯 | ⏳ |
-| P2-2 | 다국어 카피 분리 | ⏳ |
-| P2-3 | 캘린더 0개 사용자 EmptyState | ⏳ |
-| P2-4 | 일정 목록/재편집/삭제 진입점 | ⏳ |
+| P2-1 | App Intents · Siri · 단축어 | ✅ `AddScheduleIntent` + `SayCalShortcutsProvider` |
+| P2-2 | 다국어 카피 분리 | ⏳ 한국어 단일 시장 결정 (출시 시 App Store 메타데이터만 영어 번역) |
+| P2-3 | 캘린더 0개 사용자 EmptyState | ✅ `CalendarSettingsView` 가이드 |
+| P2-4 | 일정 목록/삭제 진입점 | ✅ `RecentEventsFeature/View` (편집은 캘린더 딥링크로 위임) |
 
 ---
 
@@ -250,11 +251,16 @@ enum Recurrence: String { case none, daily, weekly, monthly, yearly }
 ### Sprint 2 — 일정 풍부화 ✅ 완료
 - P1-1 ~ P1-7 전부 해제. 자연어 1문장이 7필드(제목/날짜/시간/장소/길이/알림/반복)로 추출되고, 사용자는 확인 시트에서 모두 편집한다.
 
-### Sprint 3 — 진입점 다양화 (다음 후보)
-- P2-1 App Intents / Siri / 단축어 / 위젯
-- P2-2 다국어 분리 (`Localizable.strings`)
-- P2-3 캘린더 0개 사용자 EmptyState
-- P2-4 일정 목록 / 재편집 / 삭제 진입점
+### Sprint 3 — 진입점 다양화 ✅ 부분 완료
+- P2-1 App Intents ✅ / P2-3 EmptyState ✅ / P2-4 일정 목록 ✅
+- P2-2 다국어 분리 ⏳ — 한국어 단일 시장 결정으로 디퍼
+
+### Sprint 4+ — 백로그 (출시 후 후보)
+- 위젯 (홈 화면에서 마이크 즉시 입력)
+- 일정 인라인 편집 (현재는 캘린더 앱으로 위임)
+- 반복 종료 조건 사용자 입력
+- 위치를 `EKStructuredLocation` 지도 좌표로 확장
+- 영어 번역 (해외 출시 결정 시)
 
 ---
 
@@ -267,10 +273,11 @@ enum Recurrence: String { case none, daily, weekly, monthly, yearly }
 | `RegexScheduleParser` | 단위 | 35 | 날짜 12 + 시간 9 + duration 7 + 반복 5 + 다중 감지 4 + 종합 |
 | `AddScheduleFeature` | TCA `TestStore` | 10 | 파싱 성공/실패, 빈 date, F3/F4/F6 라우팅, 확인 시트 저장/취소, phase 동작 |
 | `OnboardingFeature` | TCA `TestStore` | 9 | step 전이, 권한 일괄 요청, 건너뛰기, 뒤로 |
+| `RecentEventsFeature` | TCA `TestStore` | 5 | 로드 성공/실패, 삭제 성공/실패, 에러 dismiss |
 | `ScheduleError` mapping | 단위 | 6 | CalendarError/SpeechError 매핑 + 미지 에러 fallback |
 | `ConfirmScheduleFeature.State` | 단위 | 8 | resolved 라운드트립, 종일/시간 분기, duration/alarm/recurrence 전파 |
 
-**총 73 테스트 / 5 suite / 모두 통과 (xcodebuild test 5초 이하).**
+**총 78 테스트 / 6 suite / 모두 통과 (xcodebuild test 5초 이하).**
 
 ### 13.2 커버 안 된 영역 (Sprint 2/3 후보)
 - `CreateCalendarEventUseCase` — 모킹 가능하나 mock 미작성 (EventKit 의존성 격리 필요)
@@ -294,37 +301,48 @@ enum Recurrence: String { case none, daily, weekly, monthly, yearly }
 ### 앱 (`SayCal/`)
 ```
 SayCalApp.swift                  — App 엔트리 + 온보딩/메인 분기
-ContentView.swift                — 메인 화면
-AddScheduleFeature.swift         — 메인 Reducer + ParsedSchedule
+ContentView.swift                — 메인 화면 (3개 sheet: 설정/목록/확인)
+AddScheduleFeature.swift         — 메인 Reducer + ParsedSchedule + Recurrence
 ParseScheduleUseCase.swift       — FoundationModels + 정규식 fallback 머지
-RegexScheduleParser.swift        ← v3 신규 — 한국어 날짜/시간 정규식 파서
-ConfirmScheduleFeature.swift     ← v3 신규 — 저장 전 편집 Reducer
-ConfirmScheduleView.swift        ← v3 신규 — 확인 시트
-ScheduleError.swift              ← v3 신규 — F1~F5 카테고리
-CreateCalendarEventUseCase.swift — EventKit + 쓰기 가능 필터 + stale fallback
+RegexScheduleParser.swift        — 한국어 날짜/시간/길이/반복 + 다중 감지
+ConfirmScheduleFeature.swift     — 저장 전 편집 Reducer (7필드)
+ConfirmScheduleView.swift        — 확인 시트
+ScheduleError.swift              — F1~F6 카테고리
+CreateCalendarEventUseCase.swift — EventKit 저장 + 알람 + 반복
 FetchCalendarsUseCase.swift      — 캘린더 목록 (쓰기 가능만)
+FetchUpcomingEventsUseCase.swift ← v5 신규 — 일정 목록 조회
+DeleteEventUseCase.swift         ← v5 신규 — 이벤트 삭제
 SpeechRecognitionUseCase.swift   — STT 스트리밍
-RequestPermissionsUseCase.swift  ← v3 신규 — 권한 3종 일괄 요청
-OnboardingFeature.swift          ← v3 신규 — 온보딩 3-step Reducer
-OnboardingView.swift             ← v3 신규 — 온보딩 UI
+RequestPermissionsUseCase.swift  — 권한 3종 일괄 요청
+OnboardingFeature.swift          — 온보딩 3-step Reducer
+OnboardingView.swift             — 온보딩 UI
 CalendarSettingsFeature.swift    — 캘린더 선택 Reducer
-CalendarSettingsView.swift       — 캘린더 선택 시트
+CalendarSettingsView.swift       — 캘린더 선택 시트 + EmptyState
 CalendarInfo.swift               — 캘린더 모델
+EventInfo.swift                  ← v5 신규 — 이벤트 모델
+RecentEventsFeature.swift        ← v5 신규 — 일정 목록 Reducer
+RecentEventsView.swift           ← v5 신규 — 일정 목록 UI
+AddScheduleIntent.swift          ← v5 신규 — App Intent + Shortcuts
 ```
 
 ### 테스트 (`SayCalTests/`)
 ```
-SayCalTests.swift                — AddScheduleFeature/ScheduleError/ConfirmScheduleState (16)
-RegexScheduleParserTests.swift   ← v3 신규 — 정규식 23건
-OnboardingFeatureTests.swift     ← v3 신규 — 온보딩 9건
+SayCalTests.swift                — AddScheduleFeature/ScheduleError/ConfirmScheduleState (29)
+RegexScheduleParserTests.swift   — 정규식 35건
+OnboardingFeatureTests.swift     — 온보딩 9건
+RecentEventsFeatureTests.swift   ← v5 신규 — 일정 목록 5건
 ```
 
 ---
 
-## 16. 최종 판정 (v4)
+## 16. 최종 판정 (v5)
 
-**Sprint 2 종료 시점에서 SayCal은 ATTACK 리뷰가 지적한 15개 이슈 중 P0/P1 14개를 모두 해결한 상태.** 남은 4개(P2)는 진입점·다국어·EmptyState·일정 목록으로 모두 확장 영역이지 출시 차단이 아니다.
+**Sprint 3 종료 시점에서 ATTACK 리뷰가 지적한 15개 이슈 중 14개 해결 + P2-2 1개 명시적 디퍼(한국어 단일 시장).** 사실상 모든 출시 작업이 끝났다.
 
-자연어 한 문장 → 7필드 파싱 → 사용자 검토 → 캘린더 저장 → 캘린더 진입까지 끊김 없이 구현. 6종 실패 카테고리는 각자 다른 메시지와 복구 액션을 제공한다.
+- 입력 진입점 3종: 앱 내 (텍스트/음성) · Siri · 단축어
+- 검토·저장·확인 플로우: 7필드 편집 시트 · 결과 알림 · 캘린더 딥링크 · 일정 목록 (삭제 가능)
+- 실패 카테고리 6종 각각 다른 메시지 + 복구 액션
+- 첫 실행 온보딩 + 권한 사전 설명 + 거부 복구
+- 78 테스트 / 6 suite 통과
 
-**스토어 제출 또는 베타 공개 모집에 적절한 시점.** Sprint 3는 진입점 확장(Siri/위젯/단축어)으로 자연어 일정 앱의 포지셔닝을 강화하는 단계가 된다.
+**App Store 제출 또는 TestFlight 공개 모집에 적절한 시점.** 출시 후 1차 피드백 루프에 따라 위젯·일정 인라인 편집·반복 종료 조건 등을 Sprint 4 백로그에서 우선순위 재조정.
