@@ -108,12 +108,14 @@ enum CalendarError: LocalizedError {
     case accessDenied
     case noWritableCalendar
     case saveFailed
+    case eventNotFound
 
     var errorDescription: String? {
         switch self {
         case .accessDenied:       "캘린더 접근 권한이 필요합니다."
         case .noWritableCalendar: "쓰기 가능한 캘린더가 없습니다."
         case .saveFailed:         "캘린더 저장에 실패했습니다."
+        case .eventNotFound:      "이벤트를 찾을 수 없습니다."
         }
     }
 }

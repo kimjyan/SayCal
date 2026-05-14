@@ -28,6 +28,14 @@ struct ContentView: View {
                 CalendarSettingsFeature()
             })
         }
+        .sheet(isPresented: Binding(
+            get: { store.isEventsListPresented },
+            set: { _ in store.send(.eventsListDismissed) }
+        )) {
+            RecentEventsView(store: Store(initialState: RecentEventsFeature.State()) {
+                RecentEventsFeature()
+            })
+        }
         .sheet(item: $store.scope(state: \.confirmation, action: \.confirmation)) { confirmStore in
             ConfirmScheduleView(store: confirmStore)
         }
@@ -66,12 +74,21 @@ struct ContentView: View {
             Text("일정 추가")
                 .font(.system(size: 17, weight: .semibold))
 
-            HStack {
+            HStack(spacing: 4) {
                 Button {
                     store.send(.settingsButtonTapped)
                 } label: {
                     Image(systemName: "calendar")
                         .font(.system(size: 22))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 40, height: 40)
+                }
+
+                Button {
+                    store.send(.eventsListButtonTapped)
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 20))
                         .foregroundStyle(Color.accentColor)
                         .frame(width: 40, height: 40)
                 }

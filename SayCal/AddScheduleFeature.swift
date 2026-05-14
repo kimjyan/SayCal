@@ -37,6 +37,7 @@ struct AddScheduleFeature {
         var text = ""
         var phase: Phase = .idle
         var isSettingsPresented = false
+        var isEventsListPresented = false
         var savedSummary: SavedSummary?
         var errorAlert: ErrorState?
         @Presents var confirmation: ConfirmScheduleFeature.State?
@@ -83,6 +84,8 @@ struct AddScheduleFeature {
         case confirmation(PresentationAction<ConfirmScheduleFeature.Action>)
         case settingsButtonTapped
         case settingsDismissed
+        case eventsListButtonTapped
+        case eventsListDismissed
         case savedSummaryDismissed
         case openSavedEventTapped
         case errorDismissed
@@ -218,6 +221,14 @@ struct AddScheduleFeature {
 
             case .settingsDismissed:
                 state.isSettingsPresented = false
+                return .none
+
+            case .eventsListButtonTapped:
+                state.isEventsListPresented = true
+                return .none
+
+            case .eventsListDismissed:
+                state.isEventsListPresented = false
                 return .none
 
             case .savedSummaryDismissed:

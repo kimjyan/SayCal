@@ -44,8 +44,10 @@ enum ScheduleError: Error, Equatable {
         }
         if let calendarError = error as? CalendarError {
             switch calendarError {
-            case .accessDenied:                       return .calendarPermission
-            case .noWritableCalendar, .saveFailed:    return .calendarSaveFailure
+            case .accessDenied:
+                return .calendarPermission
+            case .noWritableCalendar, .saveFailed, .eventNotFound:
+                return .calendarSaveFailure
             }
         }
         if error is SpeechError {
