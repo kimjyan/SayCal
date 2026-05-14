@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 @testable import SayCal
 
@@ -85,10 +86,10 @@ struct AddScheduleFeatureTests {
         ) {
             AddScheduleFeature()
         } withDependencies: {
-            $0.createCalendarEventUseCase.execute = { _, _ in }
+            $0.createCalendarEventUseCase.execute = { _, _, _ in Date(timeIntervalSince1970: 1_780_000_000) }
         }
 
-        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60))))) {
+        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
             $0.confirmation = nil
             $0.isLoading = true
         }
@@ -96,7 +97,11 @@ struct AddScheduleFeatureTests {
         await store.receive(\.calendarEventResponse.success) {
             $0.isLoading = false
             $0.text = ""
-            $0.savedSummary = .init(title: "회의", dateLabel: "2026-05-20 15:00")
+            $0.savedSummary = .init(
+                title: "회의",
+                dateLabel: "2026-05-20 15:00",
+                startDate: Date(timeIntervalSince1970: 1_780_000_000)
+            )
         }
     }
 
@@ -111,12 +116,12 @@ struct AddScheduleFeatureTests {
         ) {
             AddScheduleFeature()
         } withDependencies: {
-            $0.createCalendarEventUseCase.execute = { _, _ in
+            $0.createCalendarEventUseCase.execute = { _, _, _ in
                 throw CalendarError.accessDenied
             }
         }
 
-        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60))))) {
+        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
             $0.confirmation = nil
             $0.isLoading = true
         }
@@ -138,12 +143,12 @@ struct AddScheduleFeatureTests {
         ) {
             AddScheduleFeature()
         } withDependencies: {
-            $0.createCalendarEventUseCase.execute = { _, _ in
+            $0.createCalendarEventUseCase.execute = { _, _, _ in
                 throw CalendarError.noWritableCalendar
             }
         }
 
-        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60))))) {
+        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
             $0.confirmation = nil
             $0.isLoading = true
         }
@@ -238,5 +243,43 @@ struct ConfirmScheduleStateTests {
         let state = ConfirmScheduleFeature.State(parsed: parsed)
         #expect(state.title == "x")
         #expect(state.hasTime == false)
+    }
+
+    @Test func parsedDurationFlowsToState() {
+        let parsed = ParsedSchedule(
+            title: "회의", date: "2026-05-20", time: "15:00", location: "",
+            durationMinutes: 90, alarmOffsetMinutes: -1
+        )
+        let state = ConfirmScheduleFeature.State(parsed: parsed)
+        #expect(state.durationMinutes == 90)
+        #expect(state.alarmOffsetMinutes == -1)
+    }
+
+    @Test func missingDurationFallsBackToSixtyMinutes() {
+        let parsed = ParsedSchedule(title: "x", date: "2026-05-20", time: "15:00", location: "")
+        let state = ConfirmScheduleFeature.State(parsed: parsed)
+        #expect(state.durationMinutes == 60)
+    }
+
+    @Test func parsedAlarmFlowsToState() {
+        let parsed = ParsedSchedule(
+            title: "회의", date: "2026-05-20", time: "15:00", location: "",
+            durationMinutes: 0, alarmOffsetMinutes: 10
+        )
+        let state = ConfirmScheduleFeature.State(parsed: parsed)
+        #expect(state.alarmOffsetMinutes == 10)
+    }
+
+    @Test func resolvedCarriesDurationAndAlarm() {
+        let parsed = ParsedSchedule(
+            title: "회의", date: "2026-05-20", time: "15:00", location: "",
+            durationMinutes: 30, alarmOffsetMinutes: 60
+        )
+        var state = ConfirmScheduleFeature.State(parsed: parsed)
+        state.durationMinutes = 30
+        state.alarmOffsetMinutes = 60
+        let resolved = state.resolved
+        #expect(resolved.durationMinutes == 30)
+        #expect(resolved.alarmOffsetMinutes == 60)
     }
 }

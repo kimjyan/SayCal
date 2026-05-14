@@ -138,5 +138,37 @@ struct RegexScheduleParserTests {
         let result = RegexScheduleParser.parse("회의", now: Self.referenceNow())
         #expect(result.date == "")
         #expect(result.time == "")
+        #expect(result.durationMinutes == 0)
+    }
+
+    // MARK: - 일정 길이
+
+    @Test func durationHourOnly() {
+        #expect(RegexScheduleParser.extractDurationMinutes("1시간 미팅") == 60)
+    }
+
+    @Test func durationTwoHours() {
+        #expect(RegexScheduleParser.extractDurationMinutes("2시간 워크숍") == 120)
+    }
+
+    @Test func durationHourAndMinute() {
+        #expect(RegexScheduleParser.extractDurationMinutes("1시간 30분 회의") == 90)
+    }
+
+    @Test func durationHourHalf() {
+        #expect(RegexScheduleParser.extractDurationMinutes("1시간 반 미팅") == 90)
+    }
+
+    @Test func durationMinutesOnly() {
+        #expect(RegexScheduleParser.extractDurationMinutes("30분 면담") == 30)
+    }
+
+    @Test func durationDoesNotMatchAlarmExpression() {
+        // "10분 전"은 알람 표현이지 길이가 아님
+        #expect(RegexScheduleParser.extractDurationMinutes("10분 전 알림") == 0)
+    }
+
+    @Test func durationRejectsOverADay() {
+        #expect(RegexScheduleParser.extractDurationMinutes("25시간 행사") == 0)
     }
 }
