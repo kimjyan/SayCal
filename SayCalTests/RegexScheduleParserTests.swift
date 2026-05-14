@@ -171,4 +171,27 @@ struct RegexScheduleParserTests {
     @Test func durationRejectsOverADay() {
         #expect(RegexScheduleParser.extractDurationMinutes("25시간 행사") == 0)
     }
+
+    // MARK: - 반복
+
+    @Test func recurrenceDaily() {
+        #expect(RegexScheduleParser.extractRecurrence("매일 9시 스탠드업") == .daily)
+    }
+
+    @Test func recurrenceWeekly() {
+        #expect(RegexScheduleParser.extractRecurrence("매주 월요일 회의") == .weekly)
+    }
+
+    @Test func recurrenceMonthlyAndAlternates() {
+        #expect(RegexScheduleParser.extractRecurrence("매달 1일 정산") == .monthly)
+        #expect(RegexScheduleParser.extractRecurrence("매월 15일") == .monthly)
+    }
+
+    @Test func recurrenceYearly() {
+        #expect(RegexScheduleParser.extractRecurrence("매년 생일") == .yearly)
+    }
+
+    @Test func recurrenceNoneForOneOff() {
+        #expect(RegexScheduleParser.extractRecurrence("내일 3시 회의") == .none)
+    }
 }

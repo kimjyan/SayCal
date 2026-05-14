@@ -86,10 +86,10 @@ struct AddScheduleFeatureTests {
         ) {
             AddScheduleFeature()
         } withDependencies: {
-            $0.createCalendarEventUseCase.execute = { _, _, _ in Date(timeIntervalSince1970: 1_780_000_000) }
+            $0.createCalendarEventUseCase.execute = { _, _, _, _ in Date(timeIntervalSince1970: 1_780_000_000) }
         }
 
-        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
+        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1, recurrence: .none))))) {
             $0.confirmation = nil
             $0.phase = .saving
         }
@@ -116,12 +116,12 @@ struct AddScheduleFeatureTests {
         ) {
             AddScheduleFeature()
         } withDependencies: {
-            $0.createCalendarEventUseCase.execute = { _, _, _ in
+            $0.createCalendarEventUseCase.execute = { _, _, _, _ in
                 throw CalendarError.accessDenied
             }
         }
 
-        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
+        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1, recurrence: .none))))) {
             $0.confirmation = nil
             $0.phase = .saving
         }
@@ -143,12 +143,12 @@ struct AddScheduleFeatureTests {
         ) {
             AddScheduleFeature()
         } withDependencies: {
-            $0.createCalendarEventUseCase.execute = { _, _, _ in
+            $0.createCalendarEventUseCase.execute = { _, _, _, _ in
                 throw CalendarError.noWritableCalendar
             }
         }
 
-        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
+        await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1, recurrence: .none))))) {
             $0.confirmation = nil
             $0.phase = .saving
         }
@@ -290,6 +290,21 @@ struct ConfirmScheduleStateTests {
         )
         let state = ConfirmScheduleFeature.State(parsed: parsed)
         #expect(state.alarmOffsetMinutes == 10)
+    }
+
+    @Test func parsedRecurrenceFlowsToState() {
+        let parsed = ParsedSchedule(
+            title: "스탠드업", date: "2026-05-20", time: "09:00", location: "",
+            recurrence: .weekly
+        )
+        let state = ConfirmScheduleFeature.State(parsed: parsed)
+        #expect(state.recurrence == .weekly)
+    }
+
+    @Test func defaultRecurrenceIsNone() {
+        let parsed = ParsedSchedule(title: "x", date: "2026-05-20", time: "", location: "")
+        let state = ConfirmScheduleFeature.State(parsed: parsed)
+        #expect(state.recurrence == .none)
     }
 
     @Test func resolvedCarriesDurationAndAlarm() {
