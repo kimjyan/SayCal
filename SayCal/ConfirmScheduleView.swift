@@ -47,6 +47,14 @@ struct ConfirmScheduleView: View {
                         Text("1일 전").tag(1440)
                     }
                 }
+
+                Section("반복") {
+                    Picker("주기", selection: $store.recurrence) {
+                        ForEach(Recurrence.allCases, id: \.self) { option in
+                            Text(option.koreanLabel).tag(option)
+                        }
+                    }
+                }
             }
             .navigationTitle("일정 확인")
             .navigationBarTitleDisplayMode(.inline)

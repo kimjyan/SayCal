@@ -1,8 +1,24 @@
 import Foundation
 
 enum RegexScheduleParser {
-    static func parse(_ text: String, now: Date = Date()) -> (date: String, time: String, durationMinutes: Int) {
-        (extractDate(text, now: now), extractTime(text), extractDurationMinutes(text))
+    static func parse(_ text: String, now: Date = Date()) -> (date: String, time: String, durationMinutes: Int, recurrence: Recurrence) {
+        (extractDate(text, now: now), extractTime(text), extractDurationMinutes(text), extractRecurrence(text))
+    }
+
+    static func extractRecurrence(_ text: String) -> Recurrence {
+        if text.contains("매일") || text.contains("매 일") {
+            return .daily
+        }
+        if text.contains("매주") || text.contains("매 주") {
+            return .weekly
+        }
+        if text.contains("매달") || text.contains("매월") {
+            return .monthly
+        }
+        if text.contains("매년") || text.contains("매해") {
+            return .yearly
+        }
+        return .none
     }
 
     static func extractDurationMinutes(_ text: String) -> Int {

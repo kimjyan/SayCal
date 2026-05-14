@@ -3,12 +3,12 @@ import EventKit
 import Foundation
 
 struct CreateCalendarEventUseCase: Sendable {
-    var execute: @Sendable (_ schedule: ParsedSchedule, _ durationMinutes: Int, _ alarmOffsetMinutes: Int) async throws -> Date
+    var execute: @Sendable (_ schedule: ParsedSchedule, _ durationMinutes: Int, _ alarmOffsetMinutes: Int, _ recurrence: Recurrence) async throws -> Date
 }
 
 extension CreateCalendarEventUseCase: DependencyKey {
     static var liveValue: Self {
-        .init { schedule, durationMinutes, alarmOffsetMinutes in
+        .init { schedule, durationMinutes, alarmOffsetMinutes, recurrence in
             let store = EKEventStore()
 
             let granted = try await store.requestFullAccessToEvents()
@@ -40,6 +40,15 @@ extension CreateCalendarEventUseCase: DependencyKey {
             if alarmOffsetMinutes >= 0 {
                 let alarm = EKAlarm(relativeOffset: TimeInterval(-alarmOffsetMinutes * 60))
                 event.addAlarm(alarm)
+            }
+
+            if let frequency = recurrence.eventKitFrequency {
+                let rule = EKRecurrenceRule(
+                    recurrenceWith: frequency,
+                    interval: 1,
+                    end: nil
+                )
+                event.recurrenceRules = [rule]
             }
 
             do {
@@ -81,6 +90,18 @@ private func parseDate(_ schedule: ParsedSchedule) -> (Date, isAllDay: Bool) {
     }
 
     return (Date(), false)
+}
+
+extension Recurrence {
+    var eventKitFrequency: EKRecurrenceFrequency? {
+        switch self {
+        case .none:    nil
+        case .daily:   .daily
+        case .weekly:  .weekly
+        case .monthly: .monthly
+        case .yearly:  .yearly
+        }
+    }
 }
 
 enum CalendarError: LocalizedError {

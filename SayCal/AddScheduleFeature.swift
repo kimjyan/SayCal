@@ -9,6 +9,25 @@ struct ParsedSchedule: Equatable {
     var location: String
     var durationMinutes: Int = 0          // 0 = 미지정 (UI에서 기본 60 적용)
     var alarmOffsetMinutes: Int = -1      // -1 = 알람 없음
+    var recurrence: Recurrence = .none
+}
+
+enum Recurrence: String, Equatable, CaseIterable {
+    case none
+    case daily
+    case weekly
+    case monthly
+    case yearly
+
+    var koreanLabel: String {
+        switch self {
+        case .none:    "반복 없음"
+        case .daily:   "매일"
+        case .weekly:  "매주"
+        case .monthly: "매월"
+        case .yearly:  "매년"
+        }
+    }
 }
 
 @Reducer
@@ -117,14 +136,14 @@ struct AddScheduleFeature {
                 state.errorAlert = .init(error: error)
                 return .none
 
-            case let .confirmation(.presented(.delegate(.save(schedule, durationMinutes, alarmOffsetMinutes)))):
+            case let .confirmation(.presented(.delegate(.save(schedule, durationMinutes, alarmOffsetMinutes, recurrence)))):
                 state.confirmation = nil
                 state.phase = .saving
                 return .run { send in
                     let result: Result<CalendarSaveOutcome, ScheduleError>
                     do {
                         let startDate = try await createCalendarEventUseCase.execute(
-                            schedule, durationMinutes, alarmOffsetMinutes
+                            schedule, durationMinutes, alarmOffsetMinutes, recurrence
                         )
                         result = .success(.init(schedule: schedule, startDate: startDate))
                     } catch {

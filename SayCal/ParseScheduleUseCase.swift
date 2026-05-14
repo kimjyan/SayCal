@@ -16,6 +16,9 @@ extension ParseScheduleUseCase: DependencyKey {
                 let response = try await session.respond(to: text, generating: ScheduleGenerableOutput.self)
                 let content = response.content
 
+                let modelRecurrence = Recurrence(rawValue: content.recurrence) ?? .none
+                let recurrence = modelRecurrence != .none ? modelRecurrence : fallback.recurrence
+
                 return ParsedSchedule(
                     title: content.title,
                     date: content.date.isEmpty ? fallback.date : content.date,
@@ -24,7 +27,8 @@ extension ParseScheduleUseCase: DependencyKey {
                     durationMinutes: content.durationMinutes > 0
                         ? content.durationMinutes
                         : fallback.durationMinutes,
-                    alarmOffsetMinutes: content.alarmOffsetMinutes
+                    alarmOffsetMinutes: content.alarmOffsetMinutes,
+                    recurrence: recurrence
                 )
             } catch {
                 guard !fallback.date.isEmpty else {
@@ -36,7 +40,8 @@ extension ParseScheduleUseCase: DependencyKey {
                     time: fallback.time,
                     location: "",
                     durationMinutes: fallback.durationMinutes,
-                    alarmOffsetMinutes: -1
+                    alarmOffsetMinutes: -1,
+                    recurrence: fallback.recurrence
                 )
             }
         }
@@ -85,6 +90,7 @@ private func makeInstructions() -> String {
     - 오전/오후를 24시간 형식으로 변환하세요. (오전 9시 → 09:00, 오후 9시 → 21:00)
     - 일정 길이가 명시되면 분 단위 정수로 반환. (30분 → 30, 1시간 → 60, 1시간 30분 → 90, 2시간 → 120)
     - 알림 시점이 명시되면 시작 전 분 단위 정수로 반환. (10분 전 → 10, 1시간 전 → 60, 하루 전 → 1440)
+    - 반복 주기는 daily / weekly / monthly / yearly 중 하나로 반환. 표현이 없으면 빈 문자열.
 
     오늘: \(todayStr)
     내일: \(tomorrowStr)
@@ -116,4 +122,7 @@ private struct ScheduleGenerableOutput {
 
     @Guide(description: "알림 시점(시작 전 분). 예: '10분 전 알림' → 10, '1시간 전' → 60, '하루 전' → 1440, '정시' → 0. 알림 표현이 없으면 -1.")
     var alarmOffsetMinutes: Int
+
+    @Guide(description: "반복 주기. '매일' → daily, '매주' / '매주 X요일' → weekly, '매달' / '매월' → monthly, '매년' → yearly. 반복 표현이 없으면 빈 문자열.")
+    var recurrence: String
 }

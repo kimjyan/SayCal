@@ -12,6 +12,7 @@ struct ConfirmScheduleFeature {
         var time: Date
         var durationMinutes: Int
         var alarmOffsetMinutes: Int     // -1 = 알람 없음
+        var recurrence: Recurrence
 
         init(parsed: ParsedSchedule) {
             self.title = parsed.title
@@ -29,6 +30,7 @@ struct ConfirmScheduleFeature {
 
             self.durationMinutes = parsed.durationMinutes > 0 ? parsed.durationMinutes : 60
             self.alarmOffsetMinutes = parsed.alarmOffsetMinutes
+            self.recurrence = parsed.recurrence
         }
 
         var resolved: ParsedSchedule {
@@ -51,7 +53,8 @@ struct ConfirmScheduleFeature {
                 time: timeString,
                 location: location,
                 durationMinutes: durationMinutes,
-                alarmOffsetMinutes: alarmOffsetMinutes
+                alarmOffsetMinutes: alarmOffsetMinutes,
+                recurrence: recurrence
             )
         }
     }
@@ -64,7 +67,7 @@ struct ConfirmScheduleFeature {
 
         @CasePathable
         enum Delegate {
-            case save(ParsedSchedule, durationMinutes: Int, alarmOffsetMinutes: Int)
+            case save(ParsedSchedule, durationMinutes: Int, alarmOffsetMinutes: Int, recurrence: Recurrence)
             case cancel
         }
     }
@@ -79,7 +82,8 @@ struct ConfirmScheduleFeature {
                 return .send(.delegate(.save(
                     state.resolved,
                     durationMinutes: state.durationMinutes,
-                    alarmOffsetMinutes: state.alarmOffsetMinutes
+                    alarmOffsetMinutes: state.alarmOffsetMinutes,
+                    recurrence: state.recurrence
                 )))
             case .cancelTapped:
                 return .send(.delegate(.cancel))
