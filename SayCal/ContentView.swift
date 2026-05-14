@@ -125,6 +125,15 @@ struct ContentView: View {
         )
     }
 
+    private var micCaption: String {
+        switch store.phase {
+        case .recording: "탭하여 중지"
+        case .parsing:   "분석 중…"
+        case .saving:    "저장 중…"
+        case .idle:      "탭하여 말하기"
+        }
+    }
+
     private var bottomSection: some View {
         VStack(spacing: 0) {
             Button {
@@ -137,10 +146,12 @@ struct ContentView: View {
                     .background(store.isRecording ? Color.red.opacity(0.12) : Color(.systemGray5))
                     .clipShape(Circle())
                     .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                    .opacity(store.isLoading ? 0.4 : 1)
             }
+            .disabled(store.isLoading)
             .padding(.bottom, 12)
 
-            Text(store.isRecording ? "탭하여 중지" : "탭하여 말하기")
+            Text(micCaption)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Color(.systemGray))
         }

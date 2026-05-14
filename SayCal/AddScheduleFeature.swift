@@ -16,12 +16,30 @@ struct AddScheduleFeature {
     @ObservableState
     struct State: Equatable {
         var text = ""
-        var isLoading = false
-        var isRecording = false
+        var phase: Phase = .idle
         var isSettingsPresented = false
         var savedSummary: SavedSummary?
         var errorAlert: ErrorState?
         @Presents var confirmation: ConfirmScheduleFeature.State?
+
+        enum Phase: Equatable {
+            case idle
+            case recording
+            case parsing
+            case saving
+        }
+
+        var isLoading: Bool { phase == .parsing || phase == .saving }
+        var isRecording: Bool { phase == .recording }
+
+        var statusMessage: String? {
+            switch phase {
+            case .idle:       nil
+            case .recording:  "듣고 있어요…"
+            case .parsing:    "일정을 분석하고 있어요…"
+            case .saving:     "캘린더에 저장하고 있어요…"
+            }
+        }
 
         struct SavedSummary: Equatable {
             let title: String
@@ -72,7 +90,7 @@ struct AddScheduleFeature {
                 return .none
 
             case .addButtonTapped:
-                state.isLoading = true
+                state.phase = .parsing
                 let text = state.text
                 return .run { send in
                     let result: Result<ParsedSchedule, ScheduleError>
@@ -90,18 +108,18 @@ struct AddScheduleFeature {
                 }
 
             case let .parseResponse(.success(schedule)):
-                state.isLoading = false
+                state.phase = .idle
                 state.confirmation = ConfirmScheduleFeature.State(parsed: schedule)
                 return .none
 
             case let .parseResponse(.failure(error)):
-                state.isLoading = false
+                state.phase = .idle
                 state.errorAlert = .init(error: error)
                 return .none
 
             case let .confirmation(.presented(.delegate(.save(schedule, durationMinutes, alarmOffsetMinutes)))):
                 state.confirmation = nil
-                state.isLoading = true
+                state.phase = .saving
                 return .run { send in
                     let result: Result<CalendarSaveOutcome, ScheduleError>
                     do {
@@ -123,7 +141,7 @@ struct AddScheduleFeature {
                 return .none
 
             case let .calendarEventResponse(.success(outcome)):
-                state.isLoading = false
+                state.phase = .idle
                 state.text = ""
                 state.savedSummary = .init(
                     title: outcome.schedule.title.isEmpty ? "일정" : outcome.schedule.title,
@@ -133,16 +151,16 @@ struct AddScheduleFeature {
                 return .none
 
             case let .calendarEventResponse(.failure(error)):
-                state.isLoading = false
+                state.phase = .idle
                 state.errorAlert = .init(error: error)
                 return .none
 
             case .micButtonTapped:
-                if state.isRecording {
-                    state.isRecording = false
+                if state.phase == .recording {
+                    state.phase = .idle
                     return .cancel(id: CancelID.recording)
-                } else {
-                    state.isRecording = true
+                } else if state.phase == .idle {
+                    state.phase = .recording
                     return .run { send in
                         do {
                             for try await text in speechRecognitionUseCase.startRecording() {
@@ -154,6 +172,8 @@ struct AddScheduleFeature {
                         }
                     }
                     .cancellable(id: CancelID.recording)
+                } else {
+                    return .none
                 }
 
             case let .transcriptionUpdated(text):
@@ -161,11 +181,11 @@ struct AddScheduleFeature {
                 return .none
 
             case .recordingFinished:
-                state.isRecording = false
+                if state.phase == .recording { state.phase = .idle }
                 return .none
 
             case .speechFailed:
-                state.isRecording = false
+                if state.phase == .recording { state.phase = .idle }
                 state.errorAlert = .init(error: .speechFailure)
                 return .none
 
