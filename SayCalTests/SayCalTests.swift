@@ -22,11 +22,11 @@ struct AddScheduleFeatureTests {
         }
 
         await store.send(.addButtonTapped) {
-            $0.isLoading = true
+            $0.phase = .parsing
         }
 
         await store.receive(\.parseResponse.success) {
-            $0.isLoading = false
+            $0.phase = .idle
             $0.confirmation = ConfirmScheduleFeature.State(parsed: ParsedSchedule(
                 title: "회의", date: "2026-05-20", time: "15:00", location: "강남역"
             ))
@@ -45,11 +45,11 @@ struct AddScheduleFeatureTests {
         }
 
         await store.send(.addButtonTapped) {
-            $0.isLoading = true
+            $0.phase = .parsing
         }
 
         await store.receive(\.parseResponse.failure) {
-            $0.isLoading = false
+            $0.phase = .idle
             $0.errorAlert = .init(error: .parseFailure)
         }
     }
@@ -66,11 +66,11 @@ struct AddScheduleFeatureTests {
         }
 
         await store.send(.addButtonTapped) {
-            $0.isLoading = true
+            $0.phase = .parsing
         }
 
         await store.receive(\.parseResponse.failure) {
-            $0.isLoading = false
+            $0.phase = .idle
             $0.errorAlert = .init(error: .parseFailure)
         }
     }
@@ -91,11 +91,11 @@ struct AddScheduleFeatureTests {
 
         await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
             $0.confirmation = nil
-            $0.isLoading = true
+            $0.phase = .saving
         }
 
         await store.receive(\.calendarEventResponse.success) {
-            $0.isLoading = false
+            $0.phase = .idle
             $0.text = ""
             $0.savedSummary = .init(
                 title: "회의",
@@ -123,11 +123,11 @@ struct AddScheduleFeatureTests {
 
         await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
             $0.confirmation = nil
-            $0.isLoading = true
+            $0.phase = .saving
         }
 
         await store.receive(\.calendarEventResponse.failure) {
-            $0.isLoading = false
+            $0.phase = .idle
             $0.errorAlert = .init(error: .calendarPermission)
         }
     }
@@ -150,11 +150,11 @@ struct AddScheduleFeatureTests {
 
         await store.send(.confirmation(.presented(.delegate(.save(schedule, durationMinutes: 60, alarmOffsetMinutes: -1))))) {
             $0.confirmation = nil
-            $0.isLoading = true
+            $0.phase = .saving
         }
 
         await store.receive(\.calendarEventResponse.failure) {
-            $0.isLoading = false
+            $0.phase = .idle
             $0.errorAlert = .init(error: .calendarSaveFailure)
         }
 
@@ -162,6 +162,28 @@ struct AddScheduleFeatureTests {
             $0.errorAlert = nil
             $0.isSettingsPresented = true
         }
+    }
+
+    // MARK: - 단계별 statusMessage
+
+    @Test func statusMessageByPhase() {
+        var state = AddScheduleFeature.State()
+        #expect(state.statusMessage == nil)
+        state.phase = .recording
+        #expect(state.statusMessage == "듣고 있어요…")
+        state.phase = .parsing
+        #expect(state.statusMessage == "일정을 분석하고 있어요…")
+        state.phase = .saving
+        #expect(state.statusMessage == "캘린더에 저장하고 있어요…")
+    }
+
+    @Test func micTappedDuringLoadingIsNoop() async {
+        let store = TestStore(
+            initialState: AddScheduleFeature.State(phase: .parsing)
+        ) {
+            AddScheduleFeature()
+        }
+        await store.send(.micButtonTapped)
     }
 
     // MARK: - 확인 시트 취소
