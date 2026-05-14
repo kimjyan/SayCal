@@ -34,6 +34,19 @@ struct ConfirmScheduleView: View {
                 Section("장소") {
                     TextField("선택 사항", text: $store.location)
                 }
+
+                Section("알림") {
+                    Picker("시점", selection: $store.alarmOffsetMinutes) {
+                        Text("없음").tag(-1)
+                        Text("정시").tag(0)
+                        Text("5분 전").tag(5)
+                        Text("10분 전").tag(10)
+                        Text("15분 전").tag(15)
+                        Text("30분 전").tag(30)
+                        Text("1시간 전").tag(60)
+                        Text("1일 전").tag(1440)
+                    }
+                }
             }
             .navigationTitle("일정 확인")
             .navigationBarTitleDisplayMode(.inline)

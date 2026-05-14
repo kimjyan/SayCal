@@ -1,8 +1,28 @@
 import Foundation
 
 enum RegexScheduleParser {
-    static func parse(_ text: String, now: Date = Date()) -> (date: String, time: String) {
-        (extractDate(text, now: now), extractTime(text))
+    static func parse(_ text: String, now: Date = Date()) -> (date: String, time: String, durationMinutes: Int) {
+        (extractDate(text, now: now), extractTime(text), extractDurationMinutes(text))
+    }
+
+    static func extractDurationMinutes(_ text: String) -> Int {
+        var total = 0
+
+        if let result = capture(pattern: #"(\d{1,2})\s*시간\s*(\d{1,2})\s*분"#, in: text, groupCount: 2),
+           let hours = Int(result[0]), let minutes = Int(result[1]) {
+            total = hours * 60 + minutes
+        } else if let result = capture(pattern: #"(\d{1,2})\s*시간\s*반"#, in: text, groupCount: 1),
+                  let hours = Int(result[0]) {
+            total = hours * 60 + 30
+        } else if let result = capture(pattern: #"(\d{1,2})\s*시간"#, in: text, groupCount: 1),
+                  let hours = Int(result[0]) {
+            total = hours * 60
+        } else if let result = capture(pattern: #"(\d{1,3})\s*분(?!\s*전)"#, in: text, groupCount: 1),
+                  let minutes = Int(result[0]) {
+            total = minutes
+        }
+
+        return (total > 0 && total <= 24 * 60) ? total : 0
     }
 
     static func extractDate(_ text: String, now: Date = Date()) -> String {

@@ -20,7 +20,11 @@ extension ParseScheduleUseCase: DependencyKey {
                     title: content.title,
                     date: content.date.isEmpty ? fallback.date : content.date,
                     time: content.time.isEmpty ? fallback.time : content.time,
-                    location: content.location
+                    location: content.location,
+                    durationMinutes: content.durationMinutes > 0
+                        ? content.durationMinutes
+                        : fallback.durationMinutes,
+                    alarmOffsetMinutes: content.alarmOffsetMinutes
                 )
             } catch {
                 guard !fallback.date.isEmpty else {
@@ -30,7 +34,9 @@ extension ParseScheduleUseCase: DependencyKey {
                     title: "",
                     date: fallback.date,
                     time: fallback.time,
-                    location: ""
+                    location: "",
+                    durationMinutes: fallback.durationMinutes,
+                    alarmOffsetMinutes: -1
                 )
             }
         }
@@ -75,8 +81,10 @@ private func makeInstructions() -> String {
     var nextWeek = (7...13).map { weekEntry(offset: $0 - daysFromMonday) }.joined(separator: "\n")
 
     return """
-    사용자가 입력한 일정 텍스트에서 날짜와 시간을 추출하세요.
+    사용자가 입력한 일정 텍스트에서 정보를 추출하세요.
     - 오전/오후를 24시간 형식으로 변환하세요. (오전 9시 → 09:00, 오후 9시 → 21:00)
+    - 일정 길이가 명시되면 분 단위 정수로 반환. (30분 → 30, 1시간 → 60, 1시간 30분 → 90, 2시간 → 120)
+    - 알림 시점이 명시되면 시작 전 분 단위 정수로 반환. (10분 전 → 10, 1시간 전 → 60, 하루 전 → 1440)
 
     오늘: \(todayStr)
     내일: \(tomorrowStr)
@@ -102,4 +110,10 @@ private struct ScheduleGenerableOutput {
 
     @Guide(description: "일정의 장소. 예: '강남역', '회사', '집'. 장소 정보가 없으면 빈 문자열.")
     var location: String
+
+    @Guide(description: "일정 길이(분). 명시된 경우만 양수로 반환. 예: '30분 회의' → 30, '1시간 미팅' → 60, '오후 3시부터 5시까지' → 120. 길이 정보가 없으면 0.")
+    var durationMinutes: Int
+
+    @Guide(description: "알림 시점(시작 전 분). 예: '10분 전 알림' → 10, '1시간 전' → 60, '하루 전' → 1440, '정시' → 0. 알림 표현이 없으면 -1.")
+    var alarmOffsetMinutes: Int
 }

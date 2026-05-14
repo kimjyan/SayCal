@@ -3,12 +3,12 @@ import EventKit
 import Foundation
 
 struct CreateCalendarEventUseCase: Sendable {
-    var execute: @Sendable (_ schedule: ParsedSchedule, _ durationMinutes: Int) async throws -> Void
+    var execute: @Sendable (_ schedule: ParsedSchedule, _ durationMinutes: Int, _ alarmOffsetMinutes: Int) async throws -> Date
 }
 
 extension CreateCalendarEventUseCase: DependencyKey {
     static var liveValue: Self {
-        .init { schedule, durationMinutes in
+        .init { schedule, durationMinutes, alarmOffsetMinutes in
             let store = EKEventStore()
 
             let granted = try await store.requestFullAccessToEvents()
@@ -37,11 +37,18 @@ extension CreateCalendarEventUseCase: DependencyKey {
                     ?? startDate.addingTimeInterval(TimeInterval(durationMinutes * 60))
             }
 
+            if alarmOffsetMinutes >= 0 {
+                let alarm = EKAlarm(relativeOffset: TimeInterval(-alarmOffsetMinutes * 60))
+                event.addAlarm(alarm)
+            }
+
             do {
                 try store.save(event, span: .thisEvent)
             } catch {
                 throw CalendarError.saveFailed
             }
+
+            return startDate
         }
     }
 }

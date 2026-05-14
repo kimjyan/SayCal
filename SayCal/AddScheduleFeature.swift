@@ -7,6 +7,8 @@ struct ParsedSchedule: Equatable {
     var date: String
     var time: String
     var location: String
+    var durationMinutes: Int = 0          // 0 = 미지정 (UI에서 기본 60 적용)
+    var alarmOffsetMinutes: Int = -1      // -1 = 알람 없음
 }
 
 @Reducer
@@ -24,6 +26,7 @@ struct AddScheduleFeature {
         struct SavedSummary: Equatable {
             let title: String
             let dateLabel: String
+            let startDate: Date
         }
 
         struct ErrorState: Equatable {
@@ -39,14 +42,20 @@ struct AddScheduleFeature {
         case recordingFinished
         case speechFailed
         case parseResponse(Result<ParsedSchedule, ScheduleError>)
-        case calendarEventResponse(Result<ParsedSchedule, ScheduleError>)
+        case calendarEventResponse(Result<CalendarSaveOutcome, ScheduleError>)
         case confirmation(PresentationAction<ConfirmScheduleFeature.Action>)
         case settingsButtonTapped
         case settingsDismissed
         case savedSummaryDismissed
+        case openSavedEventTapped
         case errorDismissed
         case errorPrimaryActionTapped
         case openSettings
+    }
+
+    struct CalendarSaveOutcome: Equatable {
+        let schedule: ParsedSchedule
+        let startDate: Date
     }
 
     private enum CancelID { case recording }
@@ -90,14 +99,16 @@ struct AddScheduleFeature {
                 state.errorAlert = .init(error: error)
                 return .none
 
-            case let .confirmation(.presented(.delegate(.save(schedule, durationMinutes)))):
+            case let .confirmation(.presented(.delegate(.save(schedule, durationMinutes, alarmOffsetMinutes)))):
                 state.confirmation = nil
                 state.isLoading = true
                 return .run { send in
-                    let result: Result<ParsedSchedule, ScheduleError>
+                    let result: Result<CalendarSaveOutcome, ScheduleError>
                     do {
-                        try await createCalendarEventUseCase.execute(schedule, durationMinutes)
-                        result = .success(schedule)
+                        let startDate = try await createCalendarEventUseCase.execute(
+                            schedule, durationMinutes, alarmOffsetMinutes
+                        )
+                        result = .success(.init(schedule: schedule, startDate: startDate))
                     } catch {
                         result = .failure(ScheduleError.from(error))
                     }
@@ -111,12 +122,13 @@ struct AddScheduleFeature {
             case .confirmation:
                 return .none
 
-            case let .calendarEventResponse(.success(schedule)):
+            case let .calendarEventResponse(.success(outcome)):
                 state.isLoading = false
                 state.text = ""
                 state.savedSummary = .init(
-                    title: schedule.title.isEmpty ? "일정" : schedule.title,
-                    dateLabel: formatSummary(schedule)
+                    title: outcome.schedule.title.isEmpty ? "일정" : outcome.schedule.title,
+                    dateLabel: formatSummary(outcome.schedule),
+                    startDate: outcome.startDate
                 )
                 return .none
 
@@ -168,6 +180,18 @@ struct AddScheduleFeature {
             case .savedSummaryDismissed:
                 state.savedSummary = nil
                 return .none
+
+            case .openSavedEventTapped:
+                guard let startDate = state.savedSummary?.startDate else { return .none }
+                state.savedSummary = nil
+                return .run { _ in
+                    let reference = Int(startDate.timeIntervalSinceReferenceDate)
+                    await MainActor.run {
+                        if let url = URL(string: "calshow:\(reference)") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                }
 
             case .errorDismissed:
                 state.errorAlert = nil

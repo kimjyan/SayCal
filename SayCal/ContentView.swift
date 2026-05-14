@@ -54,6 +54,7 @@ struct ContentView: View {
             ),
             presenting: store.savedSummary
         ) { _ in
+            Button("캘린더에서 열기") { store.send(.openSavedEventTapped) }
             Button("확인", role: .cancel) { store.send(.savedSummaryDismissed) }
         } message: { summary in
             Text("\(summary.title)\n\(summary.dateLabel)")

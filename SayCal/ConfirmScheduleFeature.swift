@@ -11,6 +11,7 @@ struct ConfirmScheduleFeature {
         var hasTime: Bool
         var time: Date
         var durationMinutes: Int
+        var alarmOffsetMinutes: Int     // -1 = 알람 없음
 
         init(parsed: ParsedSchedule) {
             self.title = parsed.title
@@ -26,7 +27,8 @@ struct ConfirmScheduleFeature {
             self.time = formatter.date(from: parsed.time)
                 ?? Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!
 
-            self.durationMinutes = 60
+            self.durationMinutes = parsed.durationMinutes > 0 ? parsed.durationMinutes : 60
+            self.alarmOffsetMinutes = parsed.alarmOffsetMinutes
         }
 
         var resolved: ParsedSchedule {
@@ -47,7 +49,9 @@ struct ConfirmScheduleFeature {
                 title: title,
                 date: dateString,
                 time: timeString,
-                location: location
+                location: location,
+                durationMinutes: durationMinutes,
+                alarmOffsetMinutes: alarmOffsetMinutes
             )
         }
     }
@@ -60,7 +64,7 @@ struct ConfirmScheduleFeature {
 
         @CasePathable
         enum Delegate {
-            case save(ParsedSchedule, durationMinutes: Int)
+            case save(ParsedSchedule, durationMinutes: Int, alarmOffsetMinutes: Int)
             case cancel
         }
     }
@@ -72,7 +76,11 @@ struct ConfirmScheduleFeature {
             case .binding:
                 return .none
             case .saveTapped:
-                return .send(.delegate(.save(state.resolved, durationMinutes: state.durationMinutes)))
+                return .send(.delegate(.save(
+                    state.resolved,
+                    durationMinutes: state.durationMinutes,
+                    alarmOffsetMinutes: state.alarmOffsetMinutes
+                )))
             case .cancelTapped:
                 return .send(.delegate(.cancel))
             case .delegate:
