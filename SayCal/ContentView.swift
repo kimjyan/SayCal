@@ -2,11 +2,10 @@
 //  ContentView.swift
 //  SayCal
 //
-//  Created by 김재한 on 2/26/26.
-//
 
 import ComposableArchitecture
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @Bindable var store: StoreOf<AddScheduleFeature>
@@ -28,6 +27,36 @@ struct ContentView: View {
             CalendarSettingsView(store: Store(initialState: CalendarSettingsFeature.State()) {
                 CalendarSettingsFeature()
             })
+        }
+        .sheet(item: $store.scope(state: \.confirmation, action: \.confirmation)) { confirmStore in
+            ConfirmScheduleView(store: confirmStore)
+        }
+        .alert(
+            store.errorAlert?.error.title ?? "",
+            isPresented: Binding(
+                get: { store.errorAlert != nil },
+                set: { if !$0 { store.send(.errorDismissed) } }
+            ),
+            presenting: store.errorAlert?.error
+        ) { error in
+            if let primary = error.primaryActionLabel {
+                Button(primary) { store.send(.errorPrimaryActionTapped) }
+            }
+            Button("확인", role: .cancel) { store.send(.errorDismissed) }
+        } message: { error in
+            Text(error.message)
+        }
+        .alert(
+            "저장 완료",
+            isPresented: Binding(
+                get: { store.savedSummary != nil },
+                set: { if !$0 { store.send(.savedSummaryDismissed) } }
+            ),
+            presenting: store.savedSummary
+        ) { _ in
+            Button("확인", role: .cancel) { store.send(.savedSummaryDismissed) }
+        } message: { summary in
+            Text("\(summary.title)\n\(summary.dateLabel)")
         }
     }
 

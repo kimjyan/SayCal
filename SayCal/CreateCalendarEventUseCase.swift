@@ -3,30 +3,45 @@ import EventKit
 import Foundation
 
 struct CreateCalendarEventUseCase: Sendable {
-    var execute: @Sendable (_ schedule: ParsedSchedule) async throws -> Void
+    var execute: @Sendable (_ schedule: ParsedSchedule, _ durationMinutes: Int) async throws -> Void
 }
 
 extension CreateCalendarEventUseCase: DependencyKey {
     static var liveValue: Self {
-        .init { schedule in
+        .init { schedule, durationMinutes in
             let store = EKEventStore()
 
             let granted = try await store.requestFullAccessToEvents()
             guard granted else { throw CalendarError.accessDenied }
 
+            let writableCalendars = store.calendars(for: .event).filter { $0.allowsContentModifications }
+            let savedID = UserDefaults.standard.string(forKey: selectedCalendarKey) ?? ""
+            let target = writableCalendars.first { $0.calendarIdentifier == savedID }
+                ?? store.defaultCalendarForNewEvents.flatMap { writableCalendars.contains($0) ? $0 : nil }
+                ?? writableCalendars.first
+
+            guard let calendar = target else { throw CalendarError.noWritableCalendar }
+
             let event = EKEvent(eventStore: store)
             event.title = schedule.title.isEmpty ? "일정" : schedule.title
             event.location = schedule.location.isEmpty ? nil : schedule.location
-            let savedID = UserDefaults.standard.string(forKey: selectedCalendarKey) ?? ""
-            event.calendar = store.calendars(for: .event).first { $0.calendarIdentifier == savedID }
-                ?? store.defaultCalendarForNewEvents
+            event.calendar = calendar
 
             let (startDate, isAllDay) = parseDate(schedule)
             event.startDate = startDate
             event.isAllDay = isAllDay
-            event.endDate = isAllDay ? startDate : Calendar.current.date(byAdding: .hour, value: 1, to: startDate)!
+            if isAllDay {
+                event.endDate = startDate
+            } else {
+                event.endDate = Calendar.current.date(byAdding: .minute, value: durationMinutes, to: startDate)
+                    ?? startDate.addingTimeInterval(TimeInterval(durationMinutes * 60))
+            }
 
-            try store.save(event, span: .thisEvent)
+            do {
+                try store.save(event, span: .thisEvent)
+            } catch {
+                throw CalendarError.saveFailed
+            }
         }
     }
 }
@@ -63,10 +78,14 @@ private func parseDate(_ schedule: ParsedSchedule) -> (Date, isAllDay: Bool) {
 
 enum CalendarError: LocalizedError {
     case accessDenied
+    case noWritableCalendar
+    case saveFailed
 
     var errorDescription: String? {
         switch self {
-        case .accessDenied: "캘린더 접근 권한이 필요합니다."
+        case .accessDenied:       "캘린더 접근 권한이 필요합니다."
+        case .noWritableCalendar: "쓰기 가능한 캘린더가 없습니다."
+        case .saveFailed:         "캘린더 저장에 실패했습니다."
         }
     }
 }

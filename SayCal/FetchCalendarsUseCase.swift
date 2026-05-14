@@ -13,7 +13,9 @@ extension FetchCalendarsUseCase: DependencyKey {
             let granted = try await store.requestFullAccessToEvents()
             guard granted else { throw CalendarError.accessDenied }
 
-            return store.calendars(for: .event).map { calendar in
+            return store.calendars(for: .event)
+                .filter { $0.allowsContentModifications }
+                .map { calendar in
                 var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
                 UIColor(cgColor: calendar.cgColor).getRed(&r, green: &g, blue: &b, alpha: &a)
                 return CalendarInfo(
